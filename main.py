@@ -1,32 +1,58 @@
+import time
+
 import pygame
+import threading
 from scenes.game_scene import GameScene
 
 
-def main():
-    pygame.init()
-    clock = pygame.time.Clock()
-    scene = GameScene()
+class Main:
+    def __init__(self):
+        pygame.init()
+        self.clock = pygame.time.Clock()
+        self.scene = GameScene()
+        self.physics_thread = threading.Thread(target=self.physics_loop)
+        self.running = False
 
-    running = True
-    while running:
-        dt = clock.tick(60) / 1000
+    def start(self):
+        self.running = True
+        self.physics_thread.start()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            scene.process_events(event)
+    def stop(self):
+        self.running = False
+        self.physics_thread.join()
 
-        # Update the scene with details.
-        scene.fps = clock.get_fps()
-        scene.handle_input()
+    def physics_loop(self):
+        t1 = time.time()
+        while self.running:
+            t2 = time.time()
+            dt = t2 - t1
+            self.scene.update_physics(dt)
+            t1 = t2
 
-        # Update the scene.
-        scene.update(dt)
+    def main_loop(self):
+        self.start()
+        while self.running:
+            dt = self.clock.tick(60) / 1000.0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                self.scene.process_events(event)
 
-        # Render everything.
-        scene.render()
-    pygame.quit()
+            # Update the scene with details.
+            self.scene.fps = self.clock.get_fps()
+            self.scene.handle_input()
+
+            # Update the scene.
+            self.scene.update(dt)
+
+            # Render everything.
+            self.scene.render()
+
+            pygame.display.flip()
+
+        self.stop()
+        pygame.quit()
 
 
 if __name__ == "__main__":
-    main()
+    Main().main_loop()

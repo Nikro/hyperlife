@@ -16,8 +16,8 @@ class GameScene:
         self.fps = None
         self.game_speed = 1
         self.screen = pygame.display.set_mode((1200, 800))
-        self.world = pygame.Surface((2406, 2411))
-        self.molecule_layer = pygame.Surface((2406, 2411), pygame.SRCALPHA)
+        self.world = pygame.Surface((3000, 3000))
+        self.molecule_layer = pygame.Surface((3000, 3000), pygame.SRCALPHA)
 
         self.space = pymunk.Space()
 
@@ -29,6 +29,9 @@ class GameScene:
 
         # Create a panel
         self.panel = Panel(self.screen.get_width(), self.screen.get_height(), self)
+
+        # Add walls
+        self.walls = self.add_walls()
 
         # Init molecules.
         self.molecules = []
@@ -64,15 +67,13 @@ class GameScene:
             self.molecules.append(molecule)
 
     def update(self, dt):
-        # update game - physics, simulation, camera, rest.
-        for _ in range(int(self.game_speed)):
-            self.update_physics(dt)
-
         self.update_camera(dt)
         self.update_rest(dt)
 
     def update_physics(self, dt):
-        self.space.step(dt)
+        for _ in range(int(self.game_speed)):
+            self.space.step(dt)
+        pass
 
     def update_rest(self, dt):
         if self.fps < 10:
@@ -118,6 +119,7 @@ class GameScene:
         self.molecule_layer.fill((0, 0, 0, 0))
         self.render_molecules(self.molecule_layer)
         self.world.blit(self.molecule_layer, (0, 0))
+        self.render_walls(self.world)
 
         # Render the overall camera view (screen).
         self.render_camera_view()
@@ -171,3 +173,33 @@ class GameScene:
             remaining_height = self.screen.get_height() - display_height
             self.screen.blit(self.world.subsurface(0, 0, remaining_width, remaining_height),
                              (display_width, display_height))
+
+    def add_walls(self):
+        thickness = 5
+        color = 'grey'  # Dark gray
+
+        # Define the positions of the walls
+        top = 0
+        bottom = self.world.get_height()
+        left = 0
+        right = self.world.get_width()
+
+        # Create walls
+        walls = [pymunk.Segment(self.space.static_body, (left, top), (right, top), thickness),
+                 pymunk.Segment(self.space.static_body, (right, top), (right, bottom), thickness),
+                 pymunk.Segment(self.space.static_body, (right, bottom), (left, bottom), thickness),
+                 pymunk.Segment(self.space.static_body, (left, bottom), (left, top), thickness)]
+
+        # Set the color for the walls
+        for wall in walls:
+            wall.color = pygame.color.THECOLORS[color]
+
+        # Add walls to the space
+        self.space.add(*walls)
+        return walls
+
+    def render_walls(self, layer):
+        # Draw the walls
+        for wall in self.walls:
+            p1, p2 = wall.a, wall.b
+            pygame.draw.line(layer, wall.color, p1, p2, 5)

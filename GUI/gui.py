@@ -14,24 +14,35 @@ class Panel:
             manager=self.manager
         )
 
+        # Add panel
+        self.panel = pygame_gui.elements.UIPanel(
+            relative_rect=pygame.Rect((0, 0), (self.width, screen_height)),
+            manager=self.manager,
+            container=self.container,
+            parent_element=self.container
+        )
+
         self.fps_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((5, 5), (140, 30)),
             text='FPS: 0',
             manager=self.manager,
-            container=self.container
+            container=self.container,
+            parent_element=self.panel
         )
         self.game_speed_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((5, 40), (140, 30)),
             text='SPEED: 0',
             manager=self.manager,
-            container=self.container
+            container=self.container,
+            parent_element=self.panel
         )
         self.speed_slider = pygame_gui.elements.UIHorizontalSlider(
             relative_rect=pygame.Rect((5, 75), (140, 30)),
             start_value=1,
             value_range=(1, 20),
             manager=self.manager,
-            container=self.container
+            container=self.container,
+            parent_element=self.panel
         )
 
     def process_events(self, event):

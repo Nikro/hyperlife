@@ -1,23 +1,62 @@
- {
-     "label":
-     {
-         "colours":
-         {
-             "dark_bg": "#25292e",
-             "normal_text": "#c5cbd8",
-             "text_shadow": "#505050"
-         },
-         "font":
-         {
-             "size": "12",
-             "bold": "0",
-             "italic": "0"
-         },
-         "misc":
-         {
-             "text_shadow": "1",
-             "text_shadow_size": "1",
-             "text_shadow_offset": "0,0"
-         }
-     }
- }
+{
+    "defaults":
+    {
+        "colours":
+        {
+            "normal_bg": "#3A405A",
+            "hovered_bg": "#4C5270",
+            "disabled_bg": "#2C303A",
+            "selected_bg": "#1F2430",
+            "dark_bg": "#151A26",
+            "normal_text": "#DADFE2",
+            "hovered_text": "#FFFFFF",
+            "selected_text": "#FFFFFF",
+            "disabled_text": "#6D757D",
+            "link_text": "#3498DB",
+            "link_hover": "#5DADE2",
+            "link_selected": "#2E86C1",
+            "text_shadow": "#777777",
+            "normal_border": "#57607C",
+            "hovered_border": "#70788D",
+            "disabled_border": "#414952",
+            "selected_border": "#2B3540",
+            "active_border": "#2B3540",
+            "filled_bar": "#16A085",
+            "unfilled_bar": "#34495E"
+        }
+    },
+
+    "label": {
+        "colours": {
+            "dark_bg": "#1A1E2A"
+        }
+    },
+
+    "button":
+    {
+        "colours":
+        {
+            "normal_bg": "#3A405A",
+            "hovered_bg": "#4C5270",
+            "disabled_bg": "#2C303A",
+            "selected_bg": "#1F2430",
+            "active_bg": "#1F2430",
+            "dark_bg": "#151A26",
+            "normal_text": "#DADFE2",
+            "hovered_text": "#FFFFFF",
+            "selected_text": "#FFFFFF",
+            "disabled_text": "#6D757D",
+            "active_text": "#FFFFFF",
+            "normal_border": "#57607C",
+            "hovered_border": "#70788D",
+            "disabled_border": "#414952",
+            "selected_border": "#2B3540",
+            "active_border": "#2B3540"
+        },
+
+        "misc":
+        {
+            "tool_tip_delay": "1.5"
+        }
+    }
+}
