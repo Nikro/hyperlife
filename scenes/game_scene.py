@@ -19,12 +19,12 @@ class GameScene:
         self.fps = 60
         self.game_speed = 1
         self.screen = None
-        self.world_width = None
-        self.world_height = None
+        self.world_width = 3000
+        self.world_height = 3000
         self.molecule_layer = None
         self.space = None
-        self.camera_x = None
-        self.camera_y = None
+        self.camera_x = 0
+        self.camera_y = 0
         self.panel = None
         self.world = None
         self.walls = None
@@ -47,9 +47,6 @@ class GameScene:
                                 self.screen.get_height() / 2 - icon.get_height() / 2))
         pygame.display.flip()
 
-        # Draw the texture onto the world
-        self.camera_x, self.camera_y = 0, 0
-
         # Create a panel
         self.panel = Panel(self.screen.get_width(), self.screen.get_height(), self)
 
@@ -60,8 +57,6 @@ class GameScene:
         pygame.display.set_caption("HyperLife 1.0 - Sandbox")
 
     def init_world(self):
-        self.world_width = 3000
-        self.world_height = 3000
         self.molecule_layer = pygame.Surface((self.world_width, self.world_height), pygame.SRCALPHA)
         self.space = pymunk.Space()
 
