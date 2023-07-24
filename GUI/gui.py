@@ -44,14 +44,21 @@ class Panel:
             container=self.container,
             parent_element=self.panel
         )
+        self.molecules_count_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((5, 110), (140, 30)),
+            text='Molecules: 0',
+            manager=self.manager,
+            container=self.container,
+            parent_element=self.panel
+        )
 
     def process_events(self, event):
+        # Make sure we don't process the custom events.
         self.manager.process_events(event)
 
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
-                if event.ui_element == self.speed_slider:
-                    self.game_scene.game_speed = event.value
+        if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+            if event.ui_element == self.speed_slider:
+                self.game_scene.game_speed = event.value
 
     def update(self, delta_time):
         self.manager.update(delta_time)
@@ -64,3 +71,6 @@ class Panel:
 
     def set_game_speed(self, speed):
         self.game_speed_label.set_text(f"SPEED: {speed}x")
+
+    def set_molecules_count(self, count):
+        self.molecules_count_label.set_text(f"Molecules: {count}")

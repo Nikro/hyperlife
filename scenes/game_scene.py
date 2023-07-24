@@ -2,6 +2,7 @@ import random
 
 import pygame
 import pymunk
+from pymunk import ShapeFilter
 
 from GUI.gui import Panel
 from particles.molecule import Molecule
@@ -9,6 +10,7 @@ from particles.molecule import Molecule
 
 class GameScene:
     def __init__(self):
+        self.view_port = None
         self.move_down = None
         self.move_up = None
         self.move_right = None
@@ -16,9 +18,10 @@ class GameScene:
         self.fps = None
         self.game_speed = 1
         self.screen = pygame.display.set_mode((1200, 800))
-        self.world = pygame.Surface((3000, 3000))
-        self.molecule_layer = pygame.Surface((3000, 3000), pygame.SRCALPHA)
+        self.world_width = 3000
+        self.world_height = 3000
 
+        self.molecule_layer = pygame.Surface((self.world_width, self.world_height), pygame.SRCALPHA)
         self.space = pymunk.Space()
 
         # Load the texture and icons and what not.
@@ -30,7 +33,8 @@ class GameScene:
         # Create a panel
         self.panel = Panel(self.screen.get_width(), self.screen.get_height(), self)
 
-        # Add walls
+        # Add world and walls
+        self.world = pygame.Surface((self.world_width + self.panel.width, self.world_height))
         self.walls = self.add_walls()
 
         # Init molecules.
@@ -56,15 +60,30 @@ class GameScene:
             self.panel.process_events(event)
 
     def init_molecules(self):
-        for _ in range(25000):
-            radius = random.randint(1, 2)
-            mass = random.randint(1, 10)
-            color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-            position = (random.uniform(0, self.world.get_width()), random.uniform(0, self.world.get_height()))
-            molecule = Molecule(self.space, radius, mass, color, position)
-            impulse = pymunk.Vec2d(random.uniform(-100, 100), random.uniform(-100, 100))
-            molecule.apply_impulse(impulse)
-            self.molecules.append(molecule)
+        padding = 100  # Padding from walls
+        radius = 2  # Radius of molecule
+        gap = 10  # Gap between molecules
+        distance = 2 * radius + gap  # Distance between each molecule's center
+
+        horizontal_molecule_count = (self.world_height - 2 * padding) // distance
+        vertical_molecule_count = (self.world_width - 2 * padding) // distance
+
+        for i in range(horizontal_molecule_count):
+            for j in range(vertical_molecule_count):
+                # Calculate the position of this molecule, add padding and half of the distance
+                # to place the molecule in the center of each cell and maintain padding from walls
+                position = (padding + distance * i + distance // 2, padding + distance * j + distance // 2)
+
+                # Create the molecule
+                mass = random.randint(1, 10)
+                color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                molecule = Molecule(self.space, radius, mass, color, position)
+
+                # Apply a random impulse
+                impulse = pymunk.Vec2d(random.uniform(-100, 100), random.uniform(-100, 100))
+                molecule.apply_impulse(impulse)
+
+                self.molecules.append(molecule)
 
     def update(self, dt):
         self.update_camera(dt)
@@ -73,7 +92,9 @@ class GameScene:
     def update_physics(self, dt):
         for _ in range(int(self.game_speed)):
             self.space.step(dt)
-        pass
+
+    def update_slow(self):
+        self.panel.set_molecules_count(len(self.molecules))
 
     def update_rest(self, dt):
         if self.fps < 10:
@@ -87,38 +108,38 @@ class GameScene:
 
     def update_camera(self, dt):
         camera_movement_speed = 500  # pixels per second
-        # update game state here
-        if self.move_left:
-            self.camera_x -= camera_movement_speed * dt
-        if self.move_right:
-            self.camera_x += camera_movement_speed * dt
-        if self.move_up:
-            self.camera_y -= camera_movement_speed * dt
-        if self.move_down:
-            self.camera_y += camera_movement_speed * dt
 
-        # Prevent the camera from moving outside of the world
-        if self.camera_x < 0:
-            self.camera_x += self.world.get_width()
-        elif self.camera_x >= self.world.get_width():
-            self.camera_x -= self.world.get_width()
-        if self.camera_y < 0:
-            self.camera_y += self.world.get_height()
-        elif self.camera_y >= self.world.get_height():
-            self.camera_y -= self.world.get_height()
+        if self.move_left:
+            self.camera_x = max(self.camera_x - camera_movement_speed * dt, 0)
+        if self.move_right:
+            self.camera_x = min(self.camera_x + camera_movement_speed * dt,
+                                self.world_height - self.screen.get_width() + self.panel.width)
+        if self.move_up:
+            self.camera_y = max(self.camera_y - camera_movement_speed * dt, 0)
+        if self.move_down:
+            self.camera_y = min(self.camera_y + camera_movement_speed * dt,
+                                self.world_width - self.screen.get_height())
 
     def process_events(self, event):
         self.panel.process_events(event)
 
     def render(self):
         # Handle rendering here
-        # Fill the world with black - and background.
+        self.view_port = pygame.Rect(self.camera_x, self.camera_y, self.screen.get_width(), self.screen.get_height())
         self.world.fill((0, 0, 0))
 
-        # Fill the molecule layer with transparent.
+        # Fill the entire molecule layer with transparent.
         self.molecule_layer.fill((0, 0, 0, 0))
-        self.render_molecules(self.molecule_layer)
-        self.world.blit(self.molecule_layer, (0, 0))
+
+        # Create a new surface for the visible layer.
+        visible_layer = pygame.Surface((self.screen.get_width(), self.screen.get_height()), pygame.SRCALPHA)
+
+        # Render molecules only within the visible region onto the visible layer.
+        self.render_molecules(visible_layer)
+
+        # Blit the visible layer onto the world surface.
+        self.world.blit(visible_layer, self.view_port)
+
         self.render_walls(self.world)
 
         # Render the overall camera view (screen).
@@ -130,49 +151,24 @@ class GameScene:
         # Apply the changes to the screen
         pygame.display.flip()
 
+    def get_molecules_in_viewport(self):
+        viewport_bb = pymunk.BB(self.camera_x, self.camera_y,
+                                self.camera_x + self.screen.get_width(),
+                                self.camera_y + self.screen.get_height())
+        shapes_in_viewport = self.space.bb_query(viewport_bb, pymunk.ShapeFilter())
+        molecules_in_viewport = [shape.body.molecule for shape in shapes_in_viewport if hasattr(shape.body, 'molecule')]
+        return molecules_in_viewport
+
     def render_molecules(self, layer):
-        # Define camera bounds
-        camera_left = self.camera_x
-        camera_right = self.camera_x + self.screen.get_width()
-        camera_top = self.camera_y
-        camera_bottom = self.camera_y + self.screen.get_height()
-
-        for molecule in self.molecules:
-            position = molecule.body.position
-
-            # Check if the molecule is within the camera view
-            if camera_left <= position.x <= camera_right and camera_top <= position.y <= camera_bottom:
-                pygame.draw.circle(layer, molecule.color, (int(position.x), int(position.y)), molecule.radius)
+        rect_left, rect_top, rect_width, rect_height = self.view_port
+        molecules_in_viewport = self.get_molecules_in_viewport()
+        for molecule in molecules_in_viewport:
+            pos_x, pos_y = molecule.body.position
+            screen_pos_x, screen_pos_y = (pos_x - rect_left), (pos_y - rect_top)
+            pygame.draw.circle(layer, molecule.color, (screen_pos_x, screen_pos_y), molecule.radius)
 
     def render_camera_view(self):
-        # Calculate the width and height of the world to be displayed
-        display_width = min(self.screen.get_width() - self.panel.width,
-                            self.world.get_width() - self.camera_x)
-        display_height = min(self.screen.get_height(),
-                             self.world.get_height() - self.camera_y)
-
-        # Draw the visible part of the world surface onto the screen
-        self.screen.blit(self.world.subsurface(self.camera_x, self.camera_y, display_width, display_height),
-                         (0, 0))
-
-        # If the camera view straddles the edge of the world in the x-direction
-        if display_width < self.screen.get_width() - self.panel.width:
-            remaining_width = self.screen.get_width() - self.panel.width - display_width
-            self.screen.blit(self.world.subsurface(0, self.camera_y, remaining_width, display_height),
-                             (display_width, 0))
-
-        # If the camera view straddles the edge of the world in the y-direction
-        if display_height < self.screen.get_height():
-            remaining_height = self.screen.get_height() - display_height
-            self.screen.blit(self.world.subsurface(self.camera_x, 0, display_width, remaining_height),
-                             (0, display_height))
-
-        # If the camera view is at a corner of the world
-        if display_width < self.screen.get_width() - self.panel.width and display_height < self.screen.get_height():
-            remaining_width = self.screen.get_width() - self.panel.width - display_width
-            remaining_height = self.screen.get_height() - display_height
-            self.screen.blit(self.world.subsurface(0, 0, remaining_width, remaining_height),
-                             (display_width, display_height))
+        self.screen.blit(self.world.subsurface(self.view_port), (0, 0))
 
     def add_walls(self):
         thickness = 5
@@ -180,9 +176,9 @@ class GameScene:
 
         # Define the positions of the walls
         top = 0
-        bottom = self.world.get_height()
+        bottom = self.world_height
         left = 0
-        right = self.world.get_width()
+        right = self.world_width
 
         # Create walls
         walls = [pymunk.Segment(self.space.static_body, (left, top), (right, top), thickness),

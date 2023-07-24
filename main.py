@@ -13,6 +13,9 @@ class Main:
         self.physics_thread = threading.Thread(target=self.physics_loop)
         self.running = False
 
+        self.SLOW_UPDATE_EVENT = pygame.event.custom_type()
+        pygame.time.set_timer(self.SLOW_UPDATE_EVENT, 1000)
+
     def start(self):
         self.running = True
         self.physics_thread.start()
@@ -36,6 +39,8 @@ class Main:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                elif event.type == self.SLOW_UPDATE_EVENT:
+                    self.scene.update_slow()
                 self.scene.process_events(event)
 
             # Update the scene with details.
