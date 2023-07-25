@@ -25,7 +25,7 @@ class Renderer:
 
     def render_molecules(self, layer):
         rect_left, rect_top, rect_width, rect_height = self.view_port
-        molecules_in_viewport = self.get_molecules_in_viewport()
+        molecules_in_viewport = self.game_scene.visible_molecules
         for molecule in molecules_in_viewport:
             pos_x, pos_y = molecule.body.position
             screen_pos_x, screen_pos_y = (pos_x - rect_left), (pos_y - rect_top)
@@ -39,10 +39,3 @@ class Renderer:
     def render_camera_view(self):
         self.game_scene.screen.blit(self.game_scene.world.subsurface(self.view_port), (0, 0))
 
-    def get_molecules_in_viewport(self):
-        viewport_bb = pymunk.BB(self.game_scene.camera_x, self.game_scene.camera_y,
-                                self.game_scene.camera_x + self.game_scene.screen.get_width(),
-                                self.game_scene.camera_y + self.game_scene.screen.get_height())
-        shapes_in_viewport = self.game_scene.space.bb_query(viewport_bb, pymunk.ShapeFilter())
-        molecules_in_viewport = [shape.body.molecule for shape in shapes_in_viewport if hasattr(shape.body, 'molecule')]
-        return molecules_in_viewport

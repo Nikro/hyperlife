@@ -1,5 +1,5 @@
 import random
-
+import threading
 import pygame
 import pymunk
 from pymunk import ShapeFilter
@@ -19,17 +19,20 @@ class GameScene:
         self.fps = 60
         self.game_speed = 1
         self.screen = None
-        self.world_width = 3000
-        self.world_height = 3000
+        self.world_width = 5000
+        self.world_height = 5000
         self.molecule_layer = None
+        self.molecules_count = 40000
         self.space = None
         self.camera_x = 0
         self.camera_y = 0
         self.panel = None
         self.world = None
         self.walls = None
-        self.molecules = []
+        self.molecules = {}
+        self.visible_molecules = []
         self.renderer = Renderer(self)
+        self.physics_slow_steps = 0
 
         # Init everything.
         self.init_game()
@@ -59,6 +62,9 @@ class GameScene:
     def init_world(self):
         self.molecule_layer = pygame.Surface((self.world_width, self.world_height), pygame.SRCALPHA)
         self.space = pymunk.Space()
+        self.space.damping = 0.5
+        self.space.sleep_time_threshold = 0.1
+        self.space.idle_speed_threshold = 0.01
 
         # Add world and walls
         self.world = pygame.Surface((self.world_width + self.panel.width, self.world_height))
@@ -67,28 +73,36 @@ class GameScene:
     def init_molecules(self):
         padding = 100  # Padding from walls
         radius = 2  # Radius of molecule
-        gap = 10  # Gap between molecules
-        distance = 2 * radius + gap  # Distance between each molecule's center
 
-        horizontal_molecule_count = (self.world_height - 2 * padding) // distance
-        vertical_molecule_count = (self.world_width - 2 * padding) // distance
+        # Calculate the area of the simulation space
+        width = self.world_width - 2 * padding
+        height = self.world_height - 2 * padding
+
+        # Compute the number of molecules in one dimension
+        molecule_count_one_dim = int((self.molecules_count ** 0.5))
+
+        # Calculate the gap and distance between molecules
+        gap = min(width, height) / molecule_count_one_dim - 2 * radius
+        distance = 2 * radius + gap
+
+        # Adjust the molecule count in one dimension based on the actual gap
+        horizontal_molecule_count = int(width // distance)
+        vertical_molecule_count = int(height // distance)
+
+        # The actual number of molecules may be less than the requested due to rounding down
+        self.molecules_count = horizontal_molecule_count * vertical_molecule_count
 
         for i in range(horizontal_molecule_count):
             for j in range(vertical_molecule_count):
-                # Calculate the position of this molecule, add padding and half of the distance
-                # to place the molecule in the center of each cell and maintain padding from walls
                 position = (padding + distance * i + distance // 2, padding + distance * j + distance // 2)
 
-                # Create the molecule
                 mass = random.randint(1, 10)
-                color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-                molecule = Molecule(self.space, radius, mass, color, position)
-
-                # Apply a random impulse
+                molecule_radius = random.randint(2, 5)
+                molecule = Molecule(self.space, molecule_radius, mass, None, position)
                 impulse = pymunk.Vec2d(random.uniform(-100, 100), random.uniform(-100, 100))
                 molecule.apply_impulse(impulse)
 
-                self.molecules.append(molecule)
+                self.molecules[molecule.id] = molecule
 
     def handle_input(self):
         # handle user input here
@@ -115,6 +129,25 @@ class GameScene:
     def update_physics(self, dt):
         for _ in range(int(self.game_speed)):
             self.space.step(dt)
+
+            # For slow physics updates.
+            self.physics_slow_steps += 1
+            if self.physics_slow_steps % 1000 == 0:
+                # self.do_event_every_1000_frames()
+                self.physics_slow_steps = 0
+
+            if self.physics_slow_steps % 100 == 0:
+                # self.do_event_every_60_frames()
+                pass
+
+        # This is independent of physics updates, but relies on physics updates.
+        self.visible_molecules = self.get_molecules_in_viewport()
+
+        # for molecule in self.molecules.values():
+        #     molecule.update_physics(dt)
+        # self.space.step(0)
+        # for molecule in self.molecules.values():
+        #     molecule.handle_mergers()
 
     def update_slow(self):
         self.panel.set_molecules_count(len(self.molecules))
@@ -173,3 +206,18 @@ class GameScene:
         self.space.add(*walls)
         return walls
 
+    def get_molecules_in_viewport(self):
+        # Define the amount you want to extend the viewport by
+        extension = 200
+
+        # Compute the extended viewport bounds, ensuring they don't exceed the world bounds
+        extended_left = max(0, self.camera_x - extension)
+        extended_bottom = max(0, self.camera_y - extension)
+        extended_right = min(self.world_width, self.camera_x + self.screen.get_width() + extension)
+        extended_top = min(self.world_height, self.camera_y + self.screen.get_height() + extension)
+
+        # Create the extended viewport bounding box
+        extended_viewport_bb = pymunk.BB(extended_left, extended_bottom, extended_right, extended_top)
+        shapes_in_viewport = self.space.bb_query(extended_viewport_bb, pymunk.ShapeFilter())
+        molecules_in_viewport = [shape.body.molecule for shape in shapes_in_viewport if hasattr(shape.body, 'molecule')]
+        return molecules_in_viewport
