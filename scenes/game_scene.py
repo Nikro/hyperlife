@@ -1,22 +1,25 @@
 import random
-import threading
 import pygame
 import pymunk
-from pymunk import ShapeFilter
 
 from GUI.gui import Panel
 from particles.molecule import Molecule
+from particles.wave import Wave
 from scenes.renderer import Renderer
+from scenes.constants import *
+from events import *
 
 
 class GameScene:
     def __init__(self):
+        self.refresh_waves = False
         self.move_down = None
         self.move_up = None
         self.move_right = None
         self.move_left = None
         self.view_port = None
         self.fps = 60
+        self.psu = 60
         self.game_speed = 1
         self.screen = None
         self.world_width = 5000
@@ -37,7 +40,12 @@ class GameScene:
         # Init everything.
         self.init_game()
         self.init_world()
+        # Fill the world.
+        self.setup_collisions()
         self.init_molecules()
+
+        self.waves_active = []
+        pygame.time.set_timer(WAVE_INIT_EVENT, 5000)
 
     def init_game(self):
         self.game_speed = 1
@@ -61,8 +69,10 @@ class GameScene:
 
     def init_world(self):
         self.molecule_layer = pygame.Surface((self.world_width, self.world_height), pygame.SRCALPHA)
-        self.space = pymunk.Space()
-        self.space.damping = 0.5
+        self.space = pymunk.Space(threaded=True)
+        self.space.threads = 6
+        self.space.use_spatial_hash(10, 400000)
+        self.space.damping = 0.95
         self.space.sleep_time_threshold = 0.1
         self.space.idle_speed_threshold = 0.01
 
@@ -104,6 +114,20 @@ class GameScene:
 
                 self.molecules[molecule.id] = molecule
 
+    def init_waves(self):
+        # Reduce just to 1 wave at a time.
+        radius = random.randint(500, 1000)  # Adjust this range as needed
+        impulse_strength = random.randint(50, 150)  # Adjust this range as needed
+        position = (random.randint(0, self.world_width), random.randint(0, self.world_height))
+        # position = (500, 500)
+        velocity = pymunk.Vec2d(random.randint(0, 0), random.randint(100, 100))
+        wave = Wave(self, self.space, radius, impulse_strength, velocity, position)
+        self.waves_active.append(wave)
+
+    def setup_collisions(self):
+        wave_collision_handler = self.space.add_collision_handler(WAVE_COLLISION, MOLECULE_COLLISION)
+        Wave.setup_wave_collision(wave_collision_handler)
+
     def handle_input(self):
         # handle user input here
         keys = pygame.key.get_pressed()
@@ -130,15 +154,23 @@ class GameScene:
         for _ in range(int(self.game_speed)):
             self.space.step(dt)
 
-            # For slow physics updates.
-            self.physics_slow_steps += 1
-            if self.physics_slow_steps % 1000 == 0:
-                # self.do_event_every_1000_frames()
-                self.physics_slow_steps = 0
+            for molecule in self.molecules.values():
+                molecule.update_physics(dt)
 
-            if self.physics_slow_steps % 100 == 0:
-                # self.do_event_every_60_frames()
-                pass
+            # Create waves.
+            if self.refresh_waves:
+                self.refresh_waves = False
+                self.init_waves()
+
+            # Clean up waves.
+            for wave in self.waves_active:
+                wave.update_physics(dt)
+
+            # For slow physics updates.
+            # self.physics_slow_steps += 1
+            # if self.physics_slow_steps % 100 == 0:
+            # self.update_physics_slow()
+            # self.physics_slow_steps = 1
 
         # This is independent of physics updates, but relies on physics updates.
         self.visible_molecules = self.get_molecules_in_viewport()
@@ -151,6 +183,7 @@ class GameScene:
 
     def update_slow(self):
         self.panel.set_molecules_count(len(self.molecules))
+        self.panel.set_waves_count(len(self.waves_active))
 
     def update_camera(self, dt):
         camera_movement_speed = 500  # pixels per second
@@ -172,12 +205,16 @@ class GameScene:
             self.game_speed = max(1, self.game_speed - 1)
             self.panel.speed_slider.set_current_value(int(self.game_speed))
 
-        self.panel.set_fps(int(self.fps))
+        self.panel.set_fps_psu(int(self.fps), int(self.psu))
         self.panel.set_game_speed(int(self.game_speed))
         self.panel.update(dt)
 
     def process_events(self, event):
         self.panel.process_events(event)
+
+        if event.type == WAVE_INIT_EVENT:
+            if len(self.waves_active) == 0:
+                self.refresh_waves = True
 
     def render(self):
         self.renderer.render()

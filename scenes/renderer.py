@@ -15,6 +15,7 @@ class Renderer:
         visible_layer = pygame.Surface((self.game_scene.screen.get_width(), self.game_scene.screen.get_height()), pygame.SRCALPHA)
 
         self.render_molecules(visible_layer)
+        # self.render_waves(visible_layer)
         self.game_scene.world.blit(visible_layer, self.view_port)
 
         self.render_walls(self.game_scene.world)

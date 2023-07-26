@@ -1,6 +1,6 @@
 import pygame
 import pygame_gui
-
+from events import *
 
 class Panel:
     def __init__(self, screen_width, screen_height, game_scene):
@@ -22,9 +22,9 @@ class Panel:
             parent_element=self.container
         )
 
-        self.fps_label = pygame_gui.elements.UILabel(
+        self.fps_psu_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((5, 5), (140, 30)),
-            text='FPS: 0',
+            text='FPS: 0 | PSU: 0',
             manager=self.manager,
             container=self.container,
             parent_element=self.panel
@@ -51,6 +51,13 @@ class Panel:
             container=self.container,
             parent_element=self.panel
         )
+        self.waves_count_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((5, 145), (140, 30)),
+            text='Waves: 0',
+            manager=self.manager,
+            container=self.container,
+            parent_element=self.panel
+        )
 
     def process_events(self, event):
         # Make sure we don't process the custom events.
@@ -60,17 +67,21 @@ class Panel:
             if event.ui_element == self.speed_slider:
                 self.game_scene.game_speed = event.value
 
+
     def update(self, delta_time):
         self.manager.update(delta_time)
 
     def render(self, screen):
         self.manager.draw_ui(screen)
 
-    def set_fps(self, fps):
-        self.fps_label.set_text(f"FPS: {fps}")
+    def set_fps_psu(self, fps, psu):
+        self.fps_psu_label.set_text(f"FPS: {fps} | PSU: {psu}")
 
     def set_game_speed(self, speed):
         self.game_speed_label.set_text(f"SPEED: {speed}x")
 
     def set_molecules_count(self, count):
         self.molecules_count_label.set_text(f"Molecules: {count}")
+
+    def set_waves_count(self, count):
+        self.waves_count_label.set_text(f"Waves: {count}")

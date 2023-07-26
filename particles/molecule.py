@@ -4,6 +4,7 @@ import uuid
 import pygame
 import pymunk
 import random
+from scenes.constants import MOLECULES_LAYER, MOLECULE_COLLISION
 
 
 class Molecule:
@@ -13,6 +14,7 @@ class Molecule:
         self.radius = radius
         self.mass = mass
         self.space = space
+        self.impulse_wave = None
         self.density = self.calculate_density()
         self.color = color if color is not None else self.adjust_color_based_on_density()
         self.position = position
@@ -26,6 +28,8 @@ class Molecule:
         self.shape = pymunk.Circle(self.body, radius)
         self.shape.friction = 0.001
         self.shape.elasticity = 0.9
+        self.shape.collision_type = MOLECULE_COLLISION
+        self.shape.filter = pymunk.ShapeFilter(categories=MOLECULES_LAYER, mask=pymunk.ShapeFilter.ALL_MASKS())
 
         space.add(self.body, self.shape)
         self.to_merge = set()
@@ -34,7 +38,9 @@ class Molecule:
         self.body.apply_impulse_at_local_point(impulse)
 
     def update_physics(self, dt):
-        pass
+        if self.impulse_wave is not None:
+            self.apply_impulse(self.impulse_wave)
+            self.impulse_wave = None
         # if self.body.is_sleeping:
         #     print("Sleeping")
         #     nearby_molecules = self.get_nearby_molecules(250)
@@ -67,9 +73,12 @@ class Molecule:
         nearby_molecules = []
 
         # We'll use the space's point_query_nearest method to find nearby molecules
-        for shape_info in self.space.point_query(self.body.position, max_distance, pymunk.ShapeFilter()):
+        for shape_info in self.space.point_query(self.body.position, max_distance, pymunk.ShapeFilter(categories=MOLECULES_LAYER)):
             if hasattr(shape_info.shape.body, 'molecule'):
                 nearby_molecule = shape_info.shape.body.molecule
                 nearby_molecules.append(nearby_molecule)
 
         return nearby_molecules
+
+    def set_impulse_wave(self, impulse):
+        self.impulse_wave = impulse

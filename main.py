@@ -2,6 +2,8 @@ import time
 
 import pygame
 import threading
+import cProfile
+from events import *
 from scenes.game_scene import GameScene
 
 
@@ -12,9 +14,10 @@ class Main:
         self.scene = GameScene()
         self.physics_thread = threading.Thread(target=self.physics_loop)
         self.running = False
+        self.physics_updates = 0
+        self.last_time = time.time()
 
-        self.SLOW_UPDATE_EVENT = pygame.event.custom_type()
-        pygame.time.set_timer(self.SLOW_UPDATE_EVENT, 1000)
+        pygame.time.set_timer(SLOW_UPDATE_EVENT, 1000)
 
     def start(self):
         self.running = True
@@ -30,7 +33,12 @@ class Main:
             t2 = time.time()
             dt = t2 - t1
             self.scene.update_physics(dt)
+            self.physics_updates += 1
             t1 = t2
+            if t2 - self.last_time > 1:
+                self.last_time = t2
+                self.scene.psu = self.physics_updates
+                self.physics_updates = 0
 
     def main_loop(self):
         self.start()
@@ -39,7 +47,7 @@ class Main:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
-                elif event.type == self.SLOW_UPDATE_EVENT:
+                elif event.type == SLOW_UPDATE_EVENT:
                     self.scene.update_slow()
                 self.scene.process_events(event)
 
@@ -61,3 +69,4 @@ class Main:
 
 if __name__ == "__main__":
     Main().main_loop()
+    # cProfile.run('Main().main_loop()',  sort='tottime')
